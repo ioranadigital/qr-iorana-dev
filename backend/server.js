@@ -106,8 +106,9 @@ app.get("/go/:id", async (req, res) => {
 // el dominio origen en la cabecera X-Forwarded-Host.
 // Ruta recibida: /slug/iorana.digital/vcard/nombre
 app.get("/slug/:domain/*", async (req, res) => {
-  const slug = req.params[0];        // ej: "vcard/nombre" o "pymes/oferta"
-  const domain = req.params.domain;  // ej: "iorana.digital"
+  // Limpiar barras al inicio y al final
+  const slug = req.params[0].replace(/^\/+|\/+$/g, "");
+  const domain = req.params.domain;
 
   console.log(`Slug lookup: domain=${domain} slug=${slug}`);
 
