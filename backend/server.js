@@ -79,10 +79,25 @@ app.post("/api/login", rateLimitLogin, (req, res) => {
 app.post("/api/logout", (req, res) => { req.session.destroy(); res.json({ ok: true }); });
 
 // ── Redirección por ID corto (URL grabada en el QR) ──
+// Si tiene slug amigable → redirige a la URL amigable primero
+// Si no tiene slug → redirige directo al destino final
 app.get("/go/:id", async (req, res) => {
   const { data, error } = await supabase
-    .from("qr_codes").select("dest_url").eq("id", req.params.id).single();
+    .from("qr_codes")
+    .select("dest_url, slug, slug_domain")
+    .eq("id", req.params.id)
+    .single();
+
   if (error || !data) return res.status(404).send("QR no encontrado");
+
+  const prefix = process.env.SLUG_PREFIX || "r";
+
+  if (data.slug && data.slug_domain) {
+    // Redirige a la URL amigable — el usuario ve este dominio
+    return res.redirect(302, `https://${data.slug_domain}/${prefix}/${data.slug}`);
+  }
+
+  // Sin URL amigable → directo al destino
   res.redirect(302, data.dest_url);
 });
 
