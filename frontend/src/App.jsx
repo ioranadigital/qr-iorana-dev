@@ -52,13 +52,19 @@ function useQRImage(value, size = 200, fgColor = "#000000", bgColor = "#ffffff")
 }
 
 function QRImage({ value, size = 80, fgColor = "#000000", bgColor = "#ffffff" }) {
-  const src = useQRImage(value, size, fgColor, bgColor);
+  const padding = Math.round(size * 0.1); // quiet zone ~10% del tamaño
+  const innerSize = size - padding * 2;
+  const src = useQRImage(value, innerSize, fgColor, bgColor);
   if (!src) return (
-    <div style={{ width: size, height: size, background: "#f3f4f6", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center" }}>
+    <div style={{ width: size, height: size, background: bgColor, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center" }}>
       <span style={{ fontSize: 10, color: "#9ca3af" }}>…</span>
     </div>
   );
-  return <img src={src} width={size} height={size} style={{ display: "block", borderRadius: 4 }} alt="QR" />;
+  return (
+    <div style={{ width: size, height: size, background: bgColor, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+      <img src={src} width={innerSize} height={innerSize} style={{ display: "block" }} alt="QR" />
+    </div>
+  );
 }
 
 // ── Login ─────────────────────────────────────────────
