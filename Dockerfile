@@ -17,6 +17,9 @@ FROM node:20-alpine AS production
 
 WORKDIR /app
 
+# Herramientas necesarias para compilar better-sqlite3 (módulo nativo)
+RUN apk add --no-cache python3 make g++
+
 # Instalar solo dependencias de producción
 COPY backend/package*.json ./
 RUN npm ci --omit=dev
