@@ -87,11 +87,14 @@ app.get("/go/:id", async (req, res) => {
 });
 
 // ── Redirección por slug amigable ────────────────────
-// Llamado desde Nginx de cada dominio via proxy_pass
-// Ruta: /slug/:domain/*  → busca slug + dominio en BD
+// Traefik hace stripPrefix(/r/) antes de reenviar, y añade
+// el dominio origen en la cabecera X-Forwarded-Host.
+// Ruta recibida: /slug/iorana.digital/vcard/nombre
 app.get("/slug/:domain/*", async (req, res) => {
-  const slug = req.params[0];           // ej: "pymes/todo-para-tu-negocio"
-  const domain = req.params.domain;    // ej: "iorana.digital"
+  const slug = req.params[0];        // ej: "vcard/nombre" o "pymes/oferta"
+  const domain = req.params.domain;  // ej: "iorana.digital"
+
+  console.log(`Slug lookup: domain=${domain} slug=${slug}`);
 
   const { data, error } = await supabase
     .from("qr_codes")
@@ -100,9 +103,15 @@ app.get("/slug/:domain/*", async (req, res) => {
     .eq("slug_domain", domain)
     .single();
 
-  if (error || !data) return res.status(404).send("Página no encontrada");
+  if (error || !data) {
+    console.log(`Slug not found: ${domain}/${slug}`);
+    return res.status(404).send("Página no encontrada");
+  }
   res.redirect(302, data.dest_url);
 });
+
+// ── Health check (útil para Coolify) ─────────────────
+app.get("/health", (_req, res) => res.json({ ok: true }));
 
 // ── API: dominios configurados ───────────────────────
 app.get("/api/domains", requireAuth, (_req, res) => {
