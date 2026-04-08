@@ -454,19 +454,45 @@ export default function App() {
 
                 {editId === qr.id ? (
                   <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+
                     <div>
-                      <label style={labelStyle}>URL de destino</label>
-                      <input value={editUrl} onChange={e => setEditUrl(e.target.value)} style={{ width: "100%", boxSizing: "border-box", fontSize: 13 }} />
+                      <label style={labelStyle}>Etiqueta</label>
+                      <input value={editLabel} onChange={e => setEditLabel(e.target.value)} style={{ width: "100%", boxSizing: "border-box", fontSize: 13 }} />
                     </div>
-                    <SlugField slug={editSlug} setSlug={setEditSlug} slugDomain={editSlugDomain} setSlugDomain={setEditSlugDomain} domains={domains} />
+
+                    <div>
+                      <label style={labelStyle}>URL amigable (ve el usuario)</label>
+                      <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6 }}>
+                        <select value={editSlugDomain} onChange={e => setEditSlugDomain(e.target.value)} style={{ fontSize: 13, padding: "6px 8px", borderRadius: "var(--border-radius-md)", border: "0.5px solid var(--color-border-secondary)", background: "var(--color-background-primary)", color: "var(--color-text-primary)", flexShrink: 0 }}>
+                          {domains.map(d => <option key={d} value={d}>{d}</option>)}
+                        </select>
+                        <span style={{ fontSize: 13, color: "var(--color-text-tertiary)" }}>/{slugPrefix}/</span>
+                        <input value={editSlug} onChange={e => setEditSlug(e.target.value.replace(/\s+/g, "-").toLowerCase())} placeholder="vcard/nombre" style={{ flex: 1, fontSize: 13 }} />
+                      </div>
+                      {editSlug && (
+                        <div style={{ background: "var(--color-background-info)", borderRadius: "var(--border-radius-md)", padding: "5px 10px" }}>
+                          <span style={{ fontSize: 11, fontFamily: "var(--font-mono)", color: "var(--color-text-info)" }}>
+                            https://{editSlugDomain}/{slugPrefix}/{editSlug}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
+                      <label style={labelStyle}>URL destino final</label>
+                      <input value={editUrl} onChange={e => setEditUrl(e.target.value)} placeholder="https://ejemplo.com" style={{ width: "100%", boxSizing: "border-box", fontSize: 13 }} />
+                    </div>
+
                     <div style={{ display: "flex", gap: 16 }}>
                       <div><label style={{ ...labelStyle, fontSize: 12 }}>Color QR</label><ColorPicker value={editFg} onChange={setEditFg} small /></div>
                       <div><label style={{ ...labelStyle, fontSize: 12 }}>Fondo</label><ColorPicker value={editBg} onChange={setEditBg} small /></div>
                     </div>
+
                     <div style={{ display: "flex", gap: 8 }}>
-                      <button onClick={() => handleSaveEdit(qr.id)} disabled={saving} style={solidBtn(saving, "#1a1a2e")}>{saving ? "…" : "Guardar cambios"}</button>
+                      <button onClick={() => handleSaveEdit(qr.id)} disabled={saving} style={solidBtn(saving, "#1a1a2e")}>{saving ? "Guardando…" : "Guardar cambios"}</button>
                       <button onClick={() => setEditId(null)} style={outlineBtn}>Cancelar</button>
                     </div>
+
                   </div>
                 ) : (
                   <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
