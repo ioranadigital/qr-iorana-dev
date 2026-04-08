@@ -3,11 +3,9 @@ FROM node:20-alpine AS frontend-build
 
 WORKDIR /app/frontend
 
-# Instalar dependencias primero (aprovecha caché de Docker)
 COPY frontend/package*.json ./
-RUN npm ci
+RUN npm install
 
-# Copiar el resto del código y compilar
 COPY frontend/ ./
 RUN npm run build
 
@@ -17,26 +15,19 @@ FROM node:20-alpine AS production
 
 WORKDIR /app
 
-# Herramientas necesarias para compilar better-sqlite3 (módulo nativo)
+# Herramientas necesarias para compilar better-sqlite3
 RUN apk add --no-cache python3 make g++
 
-# Instalar solo dependencias de producción
 COPY backend/package*.json ./
-RUN npm ci --omit=dev
+RUN npm install --omit=dev
 
-# Copiar el servidor
 COPY backend/server.js ./
-
-# Copiar el frontend compilado al directorio que sirve Express
 COPY --from=frontend-build /app/frontend/dist ./public
 
-# Variables de entorno por defecto
 ENV NODE_ENV=production
 ENV PORT=3000
-# DB_PATH se puede sobreescribir en Coolify para apuntar al volumen
 ENV DB_PATH=/app/data/qr.db
 
-# Crear directorio del volumen de datos
 RUN mkdir -p /app/data
 
 EXPOSE 3000
