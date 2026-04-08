@@ -207,6 +207,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [domains, setDomains] = useState(["iorana.digital"]);
+  const [slugPrefix, setSlugPrefix] = useState("r");
 
   const [tabs, setTabs] = useState(() => { try { return JSON.parse(localStorage.getItem(TABS_KEY)) || DEFAULT_TABS; } catch { return DEFAULT_TABS; } });
   const [activeTab, setActiveTab] = useState(null);
@@ -246,9 +247,10 @@ export default function App() {
       apiFetch("/api/domains"),
     ]).then(([qrData, domainData]) => {
       setQrs(qrData.map(normalize));
-      setDomains(domainData);
-      setSlugDomain(domainData[0] || "iorana.digital");
-      setEditSlugDomain(domainData[0] || "iorana.digital");
+      setDomains(domainData.domains);
+      setSlugPrefix(domainData.prefix || "r");
+      setSlugDomain(domainData.domains[0] || "iorana.digital");
+      setEditSlugDomain(domainData.domains[0] || "iorana.digital");
     }).catch(e => { if (e.message === "__UNAUTH__") setAuthed(false); else setError(e.message); })
       .finally(() => setLoading(false));
   }, [authed]);
@@ -302,7 +304,9 @@ export default function App() {
   };
 
   const handleCopy = (text, key) => { navigator.clipboard.writeText(text).then(() => { setCopied(key); setTimeout(() => setCopied(null), 1500); }); };
-  const shortUrl = id => `${BASE_URL}${id}`;
+  // URL amigable completa con prefijo /r/
+  const friendlyUrl = (slug, domain) =>
+    slug && domain ? `https://${domain}/${slugPrefix}/${slug}` : null;
   const visibleQrs = qrs.filter(q => q.tab === activeTab);
 
   if (authed === null) return <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ fontSize: 13, color: "var(--color-text-tertiary)" }}>Cargando…</span></div>;
