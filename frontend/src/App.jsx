@@ -416,23 +416,39 @@ export default function App() {
                   <span style={{ fontSize: 11, color: "var(--color-text-tertiary)", whiteSpace: "nowrap", marginLeft: 8 }}>{new Date(qr.createdAt).toLocaleDateString("es-ES")}</span>
                 </div>
 
-                {/* URLs */}
+                {/* URLs — tres niveles */}
                 {editId !== qr.id && (
-                  <div style={{ marginBottom: 8 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-                      <span style={{ fontSize: 10, color: "var(--color-text-tertiary)", flexShrink: 0, width: 50 }}>QR URL</span>
+                  <div style={{ marginBottom: 8, display: "flex", flexDirection: "column", gap: 4 }}>
+
+                    {/* 1. URL del QR físico */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <span style={{ fontSize: 10, color: "var(--color-text-tertiary)", flexShrink: 0, width: 56, textAlign: "right" }}>QR físico</span>
                       <span style={{ fontSize: 11, fontFamily: "var(--font-mono)", background: "var(--color-background-secondary)", padding: "2px 8px", borderRadius: 4, color: "var(--color-text-secondary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{shortUrl(qr.id)}</span>
                       <button onClick={() => handleCopy(shortUrl(qr.id), qr.id + "_s")} style={{ fontSize: 11, padding: "2px 8px", border: "0.5px solid var(--color-border-secondary)", borderRadius: 4, cursor: "pointer", background: "var(--color-background-primary)", color: "var(--color-text-secondary)", whiteSpace: "nowrap" }}>{copied === qr.id + "_s" ? "✓" : "Copiar"}</button>
                     </div>
-                    {qr.slug && (
-                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <span style={{ fontSize: 10, color: "var(--color-text-tertiary)", flexShrink: 0, width: 50 }}>Amigable</span>
-                        <span style={{ fontSize: 11, fontFamily: "var(--font-mono)", background: "var(--color-background-info)", padding: "2px 8px", borderRadius: 4, color: "var(--color-text-info)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>
-                          https://{qr.slugDomain}/{qr.slug}
-                        </span>
-                        <button onClick={() => handleCopy(`https://${qr.slugDomain}/${qr.slug}`, qr.id + "_f")} style={{ fontSize: 11, padding: "2px 8px", border: "0.5px solid var(--color-border-secondary)", borderRadius: 4, cursor: "pointer", background: "var(--color-background-primary)", color: "var(--color-text-secondary)", whiteSpace: "nowrap" }}>{copied === qr.id + "_f" ? "✓" : "Copiar"}</button>
-                      </div>
-                    )}
+
+                    {/* 2. URL amigable (ve el usuario) */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <span style={{ fontSize: 10, color: "var(--color-text-tertiary)", flexShrink: 0, width: 56, textAlign: "right" }}>Ve usuario</span>
+                      {qr.slug ? (
+                        <>
+                          <span style={{ fontSize: 11, fontFamily: "var(--font-mono)", background: "var(--color-background-info)", padding: "2px 8px", borderRadius: 4, color: "var(--color-text-info)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>
+                            https://{qr.slugDomain}/{slugPrefix}/{qr.slug}
+                          </span>
+                          <button onClick={() => handleCopy(`https://${qr.slugDomain}/${slugPrefix}/${qr.slug}`, qr.id + "_f")} style={{ fontSize: 11, padding: "2px 8px", border: "0.5px solid var(--color-border-secondary)", borderRadius: 4, cursor: "pointer", background: "var(--color-background-primary)", color: "var(--color-text-secondary)", whiteSpace: "nowrap" }}>{copied === qr.id + "_f" ? "✓" : "Copiar"}</button>
+                        </>
+                      ) : (
+                        <span style={{ fontSize: 11, color: "var(--color-text-tertiary)", fontStyle: "italic" }}>Sin URL amigable — redirige directo al destino</span>
+                      )}
+                    </div>
+
+                    {/* 3. Destino final */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <span style={{ fontSize: 10, color: "var(--color-text-tertiary)", flexShrink: 0, width: 56, textAlign: "right" }}>Destino</span>
+                      <span style={{ fontSize: 11, color: "var(--color-text-secondary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>→ {qr.destUrl}</span>
+                      <button onClick={() => handleCopy(qr.destUrl, qr.id + "_d")} style={{ fontSize: 11, padding: "2px 8px", border: "0.5px solid var(--color-border-secondary)", borderRadius: 4, cursor: "pointer", background: "var(--color-background-primary)", color: "var(--color-text-secondary)", whiteSpace: "nowrap" }}>{copied === qr.id + "_d" ? "✓" : "Copiar"}</button>
+                    </div>
+
                   </div>
                 )}
 
