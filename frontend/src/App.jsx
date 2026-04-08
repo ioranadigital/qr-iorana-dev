@@ -72,11 +72,14 @@ function QRImage({ value, size = 80, fgColor = "#000000", bgColor = "#ffffff" })
 
 // ── Export Modal ─────────────────────────────────────
 function ExportModal({ qr, slugPrefix, onClose }) {
-  const url = `${BASE_URL}${qr.id}`;
+  // URL que se graba en el QR físico exportado
+  const physicalUrl = qr.slug && qr.slugDomain
+    ? `https://${qr.slugDomain}/${slugPrefix}/${qr.slug}`
+    : `${BASE_URL}${qr.id}`;
   const exportSize = 512;
   const padding = Math.round(exportSize * 0.05);
   const innerSize = exportSize - padding * 2;
-  const src = useQRImage(url, innerSize, qr.fgColor, qr.bgColor);
+  const src = useQRImage(physicalUrl, innerSize, qr.fgColor, qr.bgColor);
 
   const buildCanvas = () => new Promise(resolve => {
     if (!src) return resolve(null);
@@ -111,16 +114,12 @@ function ExportModal({ qr, slugPrefix, onClose }) {
         </div>
         <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
           <div style={{ background: qr.bgColor || "#fff", padding: 8, borderRadius: 8, border: "0.5px solid var(--color-border-tertiary)" }}>
-            <QRImage value={url} size={180} fgColor={qr.fgColor} bgColor={qr.bgColor} />
+            <QRImage value={physicalUrl} size={180} fgColor={qr.fgColor} bgColor={qr.bgColor} />
           </div>
         </div>
         <div style={{ background: "var(--color-background-secondary)", borderRadius: "var(--border-radius-md)", padding: "10px 12px", marginBottom: 14 }}>
-          <p style={{ fontSize: 11, color: "var(--color-text-tertiary)", margin: "0 0 3px", textTransform: "uppercase", letterSpacing: "0.05em" }}>URL en el QR físico</p>
-          <p style={{ fontSize: 11, fontFamily: "var(--font-mono)", color: "var(--color-text-secondary)", margin: 0, wordBreak: "break-all" }}>{url}</p>
-          {friendlyUrl && <>
-            <p style={{ fontSize: 11, color: "var(--color-text-tertiary)", margin: "8px 0 3px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Ve el usuario</p>
-            <p style={{ fontSize: 11, fontFamily: "var(--font-mono)", color: "var(--color-text-info)", margin: 0, wordBreak: "break-all" }}>{friendlyUrl}</p>
-          </>}
+          <p style={{ fontSize: 11, color: "var(--color-text-tertiary)", margin: "0 0 3px", textTransform: "uppercase", letterSpacing: "0.05em" }}>URL grabada en el QR</p>
+          <p style={{ fontSize: 11, fontFamily: "var(--font-mono)", color: qr.slug ? "var(--color-text-info)" : "var(--color-text-secondary)", margin: 0, wordBreak: "break-all" }}>{physicalUrl}</p>
           <p style={{ fontSize: 11, color: "var(--color-text-tertiary)", margin: "8px 0 3px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Destino final</p>
           <p style={{ fontSize: 11, fontFamily: "var(--font-mono)", color: "var(--color-text-secondary)", margin: 0, wordBreak: "break-all" }}>{qr.destUrl}</p>
         </div>
@@ -369,6 +368,14 @@ export default function App() {
   };
 
   const shortUrl = id => `${BASE_URL}${id}`;
+
+  // URL que se graba físicamente en el QR
+  // Si tiene slug amigable → usa esa (el usuario la ve al escanear)
+  // Si no tiene slug → fallback a la URL corta
+  const qrPhysicalUrl = (qr) =>
+    qr.slug && qr.slugDomain
+      ? `https://${qr.slugDomain}/${slugPrefix}/${qr.slug}`
+      : shortUrl(qr.id);
   const visibleQrs = qrs.filter(q => q.tab === activeTab);
 
   if (authed === null) return <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ fontSize: 13, color: "var(--color-text-tertiary)" }}>Cargando…</span></div>;
@@ -498,7 +505,7 @@ export default function App() {
 
               {/* QR miniatura */}
               <div style={{ border: "0.5px solid var(--color-border-tertiary)", borderRadius: 8, background: qr.bgColor || "#fff", cursor: "pointer", overflow: "hidden" }} onClick={() => setExportTarget(qr)} title="Click para exportar">
-                <QRImage value={shortUrl(qr.id)} size={76} fgColor={qr.fgColor} bgColor={qr.bgColor} />
+                <QRImage value={qrPhysicalUrl(qr)} size={76} fgColor={qr.fgColor} bgColor={qr.bgColor} />
               </div>
 
               <div style={{ minWidth: 0 }}>
@@ -516,8 +523,8 @@ export default function App() {
 
                     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                       <span style={{ fontSize: 10, color: "var(--color-text-tertiary)", flexShrink: 0, width: 60, textAlign: "right" }}>QR físico</span>
-                      <span style={{ fontSize: 11, fontFamily: "var(--font-mono)", background: "var(--color-background-secondary)", padding: "2px 8px", borderRadius: 4, color: "var(--color-text-secondary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{shortUrl(qr.id)}</span>
-                      <button onClick={() => handleCopy(shortUrl(qr.id), qr.id + "_s")} style={{ fontSize: 11, padding: "2px 8px", border: "0.5px solid var(--color-border-secondary)", borderRadius: 4, cursor: "pointer", background: "var(--color-background-primary)", color: "var(--color-text-secondary)", whiteSpace: "nowrap" }}>{copied === qr.id + "_s" ? "✓" : "Copiar"}</button>
+                      <span style={{ fontSize: 11, fontFamily: "var(--font-mono)", background: qr.slug ? "var(--color-background-info)" : "var(--color-background-secondary)", padding: "2px 8px", borderRadius: 4, color: qr.slug ? "var(--color-text-info)" : "var(--color-text-secondary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{qrPhysicalUrl(qr)}</span>
+                      <button onClick={() => handleCopy(qrPhysicalUrl(qr), qr.id + "_s")} style={{ fontSize: 11, padding: "2px 8px", border: "0.5px solid var(--color-border-secondary)", borderRadius: 4, cursor: "pointer", background: "var(--color-background-primary)", color: "var(--color-text-secondary)", whiteSpace: "nowrap" }}>{copied === qr.id + "_s" ? "✓" : "Copiar"}</button>
                     </div>
 
                     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
