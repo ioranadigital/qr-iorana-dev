@@ -132,17 +132,43 @@ function ExportModal({ qr, onClose }) {
     img.src = src;
   }, [src]);
 
-  const downloadPNG = () => {
-    if (!src) return;
+  const exportSize = 512;
+  const padding = Math.round(exportSize * 0.1);
+  const innerSize = exportSize - padding * 2;
+
+  const buildExportCanvas = () => {
+    if (!src) return null;
+    const canvas = document.createElement("canvas");
+    canvas.width = exportSize;
+    canvas.height = exportSize;
+    const ctx = canvas.getContext("2d");
+    // fondo con quiet zone
+    ctx.fillStyle = qr.bgColor || "#ffffff";
+    ctx.fillRect(0, 0, exportSize, exportSize);
+    const img = new Image();
+    return new Promise(resolve => {
+      img.onload = () => {
+        ctx.drawImage(img, padding, padding, innerSize, innerSize);
+        resolve(canvas);
+      };
+      img.src = src;
+    });
+  };
+
+  const downloadPNG = async () => {
+    const canvas = await buildExportCanvas();
+    if (!canvas) return;
     const a = document.createElement("a");
     a.download = `QR_${qr.id}.png`;
-    a.href = src;
+    a.href = canvas.toDataURL("image/png");
     a.click();
   };
 
-  const downloadSVG = () => {
-    if (!src) return;
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512"><image href="${src}" width="512" height="512"/></svg>`;
+  const downloadSVG = async () => {
+    const canvas = await buildExportCanvas();
+    if (!canvas) return;
+    const dataUrl = canvas.toDataURL("image/png");
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512"><image href="${dataUrl}" width="512" height="512"/></svg>`;
     const a = document.createElement("a");
     a.download = `QR_${qr.id}.svg`;
     a.href = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" }));
