@@ -1,40 +1,40 @@
 const express = require("express");
-const Database = require("better-sqlite3");
 const session = require("express-session");
 const cors = require("cors");
 const path = require("path");
+const { createClient } = require("@supabase/supabase-js");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ── Base de datos ────────────────────────────────────
-const db = new Database(process.env.DB_PATH || "qr.db");
-db.exec(`
-  CREATE TABLE IF NOT EXISTS qr_codes (
-    id         TEXT PRIMARY KEY,
-    label      TEXT NOT NULL DEFAULT '',
-    dest_url   TEXT NOT NULL,
-    fg_color   TEXT NOT NULL DEFAULT '#000000',
-    bg_color   TEXT NOT NULL DEFAULT '#ffffff',
-    created_at TEXT NOT NULL DEFAULT (datetime('now'))
-  )
-`);
+// ── Supabase ─────────────────────────────────────────
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY  // service_role key, NO la anon
+);
 
 // ── Middlewares ──────────────────────────────────────
-app.use(cors({ origin: process.env.ALLOWED_ORIGIN || "https://qr.iorana.dev", credentials: true }));
+// CRÍTICO: necesario para que las cookies funcionen detrás de Coolify/Nginx
+app.set("trust proxy", 1);
+
+app.use(cors({
+  origin: process.env.ALLOWED_ORIGIN || "https://qr.iorana.dev",
+  credentials: true,
+}));
 app.use(express.json());
 app.use(session({
-  secret: process.env.SESSION_SECRET || "changeme-use-env-var",
+  secret: process.env.SESSION_SECRET || "changeme-set-in-env",
   resave: false,
   saveUninitialized: false,
   cookie: {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
     maxAge: 8 * 60 * 60 * 1000, // 8 horas
   },
 }));
 
-// ── Rate limiting simple para login ─────────────────
+// ── Rate limiting simple ─────────────────────────────
 const loginAttempts = new Map();
 function rateLimitLogin(req, res, next) {
   const ip = req.ip;
@@ -64,7 +64,7 @@ app.use((req, _res, next) => {
   next();
 });
 
-// ── Rutas de autenticación ───────────────────────────
+// ── Auth routes ──────────────────────────────────────
 app.get("/api/me", (req, res) => {
   if (req.session?.authenticated) return res.json({ ok: true });
   res.status(401).json({ ok: false });
@@ -74,11 +74,21 @@ app.post("/api/login", rateLimitLogin, (req, res) => {
   const { username, password } = req.body;
   const validUser = process.env.ADMIN_USER || "admin";
   const validPass = process.env.ADMIN_PASS || "changeme";
+
+  console.log(`Login attempt: user="${username}" match=${username === validUser && password === validPass}`);
+
   if (username === validUser && password === validPass) {
     req.session.authenticated = true;
-    return res.json({ ok: true });
+    req.session.save(err => {
+      if (err) {
+        console.error("Session save error:", err);
+        return res.status(500).json({ error: "Error al guardar sesión" });
+      }
+      res.json({ ok: true });
+    });
+  } else {
+    res.status(401).json({ error: "Credenciales incorrectas" });
   }
-  res.status(401).json({ error: "Credenciales incorrectas" });
 });
 
 app.post("/api/logout", (req, res) => {
@@ -87,43 +97,78 @@ app.post("/api/logout", (req, res) => {
 });
 
 // ── Redirección dinámica (pública) ───────────────────
-app.get("/go/:id", (req, res) => {
-  const row = db.prepare("SELECT dest_url FROM qr_codes WHERE id = ?").get(req.params.id);
-  if (row) return res.redirect(302, row.dest_url);
-  res.status(404).send("QR no encontrado");
+app.get("/go/:id", async (req, res) => {
+  const { data, error } = await supabase
+    .from("qr_codes")
+    .select("dest_url")
+    .eq("id", req.params.id)
+    .single();
+
+  if (error || !data) return res.status(404).send("QR no encontrado");
+  res.redirect(302, data.dest_url);
 });
 
 // ── API REST (protegida) ─────────────────────────────
-app.get("/api/qrs", requireAuth, (_req, res) => {
-  res.json(db.prepare("SELECT * FROM qr_codes ORDER BY created_at DESC").all());
+
+// GET /api/qrs
+app.get("/api/qrs", requireAuth, async (_req, res) => {
+  const { data, error } = await supabase
+    .from("qr_codes")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
 });
 
-app.post("/api/qrs", requireAuth, (req, res) => {
+// POST /api/qrs
+app.post("/api/qrs", requireAuth, async (req, res) => {
   const { id, label, destUrl, fgColor, bgColor } = req.body;
   if (!id || !destUrl) return res.status(400).json({ error: "id y destUrl son obligatorios" });
-  try {
-    db.prepare("INSERT INTO qr_codes (id, label, dest_url, fg_color, bg_color) VALUES (?, ?, ?, ?, ?)")
-      .run(id, label || "", destUrl, fgColor || "#000000", bgColor || "#ffffff");
-    res.status(201).json({ ok: true, id });
-  } catch (err) {
-    if (err.message.includes("UNIQUE")) return res.status(409).json({ error: "ID duplicado" });
-    res.status(500).json({ error: err.message });
+
+  const { error } = await supabase.from("qr_codes").insert({
+    id,
+    label: label || "",
+    dest_url: destUrl,
+    fg_color: fgColor || "#000000",
+    bg_color: bgColor || "#ffffff",
+  });
+
+  if (error) {
+    if (error.code === "23505") return res.status(409).json({ error: "ID duplicado" });
+    return res.status(500).json({ error: error.message });
   }
+  res.status(201).json({ ok: true, id });
 });
 
-app.put("/api/qrs/:id", requireAuth, (req, res) => {
+// PUT /api/qrs/:id
+app.put("/api/qrs/:id", requireAuth, async (req, res) => {
   const { destUrl, label, fgColor, bgColor } = req.body;
   if (!destUrl) return res.status(400).json({ error: "destUrl es obligatorio" });
-  const result = db.prepare(
-    "UPDATE qr_codes SET dest_url = ?, label = ?, fg_color = ?, bg_color = ? WHERE id = ?"
-  ).run(destUrl, label || "", fgColor || "#000000", bgColor || "#ffffff", req.params.id);
-  if (result.changes === 0) return res.status(404).json({ error: "QR no encontrado" });
+
+  const { error, count } = await supabase
+    .from("qr_codes")
+    .update({
+      dest_url: destUrl,
+      label: label || "",
+      fg_color: fgColor || "#000000",
+      bg_color: bgColor || "#ffffff",
+    })
+    .eq("id", req.params.id);
+
+  if (error) return res.status(500).json({ error: error.message });
+  if (count === 0) return res.status(404).json({ error: "QR no encontrado" });
   res.json({ ok: true });
 });
 
-app.delete("/api/qrs/:id", requireAuth, (req, res) => {
-  const result = db.prepare("DELETE FROM qr_codes WHERE id = ?").run(req.params.id);
-  if (result.changes === 0) return res.status(404).json({ error: "QR no encontrado" });
+// DELETE /api/qrs/:id
+app.delete("/api/qrs/:id", requireAuth, async (req, res) => {
+  const { error } = await supabase
+    .from("qr_codes")
+    .delete()
+    .eq("id", req.params.id);
+
+  if (error) return res.status(500).json({ error: error.message });
   res.json({ ok: true });
 });
 
