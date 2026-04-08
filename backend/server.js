@@ -113,10 +113,12 @@ app.get("/slug/:domain/*", async (req, res) => {
 // ── Health check (útil para Coolify) ─────────────────
 app.get("/health", (_req, res) => res.json({ ok: true }));
 
-// ── API: dominios configurados ───────────────────────
+// ── API: dominios y prefijo configurados ─────────────
 app.get("/api/domains", requireAuth, (_req, res) => {
-  const domains = (process.env.SLUG_DOMAINS || "iorana.digital").split(",").map(d => d.trim()).filter(Boolean);
-  res.json(domains);
+  const domains = (process.env.SLUG_DOMAINS || "iorana.digital")
+    .split(",").map(d => d.trim()).filter(Boolean);
+  const prefix = process.env.SLUG_PREFIX || "r";
+  res.json({ domains, prefix });
 });
 
 // ── API REST QRs ─────────────────────────────────────
