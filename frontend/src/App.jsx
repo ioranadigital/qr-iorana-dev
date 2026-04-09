@@ -13,14 +13,14 @@ const COLORS = ["#000000","#1a1a2e","#16213e","#e63946","#2a9d8f","#e9c46a","#6a
 
 // ── Brand tokens ─────────────────────────────────────
 const B = {
-  bg:       "#0d1117",
+  bg:       "#08223A",
   surface:  "#161b27",
-  card:     "#1e2535",
+  card:     "#0A2B49",
   border:   "#2a3348",
-  orange:   "#f97316",
+  orange:   "#ff8c22",
   orangeD:  "#ea580c",
-  text:     "#f1f5f9",
-  muted:    "#94a3b8",
+  text:     "#ffffff",
+  muted:    "#ffffff",
   dim:      "#64748b",
 };
 
@@ -240,7 +240,50 @@ function LoginScreen({ onLogin }) {
   );
 }
 
-// ── Color Picker ──────────────────────────────────────
+// ── Slug Field con dos inputs ─────────────────────────
+function SlugField({ slugDomain, setSlugDomain, domains, slugPrefix, value, onChange }) {
+  const parts = value ? value.split("/") : ["", ""];
+  const cat = parts[0] || "";
+  const name = parts.slice(1).join("/") || "";
+
+  const update = (newCat, newName) => {
+    const combined = newName ? `${newCat}/${newName}` : newCat;
+    onChange(combined.replace(/\s+/g, "-").replace(/[^a-z0-9\-\/]/gi, "").replace(/\/+$/, "").toLowerCase());
+  };
+
+  const friendlyUrl = value && slugDomain ? `https://${slugDomain}/${slugPrefix}/${value}` : null;
+
+  return (
+    <div>
+      <label style={fieldLabel}>URL amigable <span style={{ fontSize: 10, color: B.orange, background: "rgba(249,115,22,0.1)", borderRadius: 4, padding: "1px 6px", marginLeft: 4 }}>opcional</span></label>
+      <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 6, flexWrap: "wrap" }}>
+        <select value={slugDomain} onChange={e => setSlugDomain(e.target.value)} style={{ ...fieldInput, width: "auto", flexShrink: 0, flex: "none" }}>
+          {domains.map(d => <option key={d} value={d}>{d}</option>)}
+        </select>
+        <span style={{ fontSize: 13, color: B.dim, flexShrink: 0 }}>/{slugPrefix}/</span>
+        <input
+          value={cat}
+          onChange={e => update(e.target.value, name)}
+          placeholder="vcard"
+          style={{ ...fieldInput, flex: 1, minWidth: 70 }}
+        />
+        <span style={{ fontSize: 16, color: B.dim, flexShrink: 0, fontWeight: 700 }}>/</span>
+        <input
+          value={name}
+          onChange={e => update(cat, e.target.value)}
+          placeholder="nombre"
+          style={{ ...fieldInput, flex: 1, minWidth: 70 }}
+        />
+      </div>
+      {friendlyUrl && (
+        <div style={{ background: "rgba(249,115,22,0.08)", border: "1px solid rgba(249,115,22,0.2)", borderRadius: 8, padding: "6px 10px" }}>
+          <span style={{ fontSize: 11, fontFamily: "monospace", color: B.orange }}>{friendlyUrl}</span>
+        </div>
+      )}
+      {!value && <p style={{ fontSize: 11, color: B.dim, margin: "4px 0 0" }}>Deja vacío para usar solo la URL corta del sistema.</p>}
+    </div>
+  );
+}
 function ColorPicker({ value, onChange, small = false }) {
   const sz = small ? 20 : 22;
   return (
