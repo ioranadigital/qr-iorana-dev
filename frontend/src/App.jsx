@@ -18,7 +18,7 @@ const B = {
   card:     "#08223A",
   border:   "#2a3348",
   orange:   "#ff8c22",
-  orangeD:  "#ea580c",
+  orangeD:  "#ee5e10",
   text:     "#EBF2F7",
   muted:    "#EBF2F7",
   dim:      "#64748b",
@@ -385,9 +385,9 @@ export default function App() {
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div style={{ width: 34, height: 34, background: `linear-gradient(135deg, ${B.orange}, ${B.orangeD})`, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                <rect x="3" y="3" width="8" height="8" rx="1" fill="white"/><rect x="5" y="5" width="4" height="4" fill="#FF8C22"/>
-                <rect x="13" y="3" width="8" height="8" rx="1" fill="white"/><rect x="15" y="5" width="4" height="4" fill="#FF8C22"/>
-                <rect x="3" y="13" width="8" height="8" rx="1" fill="white"/><rect x="5" y="15" width="4" height="4" fill="#FF8C22"/>
+                <rect x="3" y="3" width="8" height="8" rx="1" fill="white"/><rect x="5" y="5" width="4" height="4" fill="#f97316"/>
+                <rect x="13" y="3" width="8" height="8" rx="1" fill="white"/><rect x="15" y="5" width="4" height="4" fill="#f97316"/>
+                <rect x="3" y="13" width="8" height="8" rx="1" fill="white"/><rect x="5" y="15" width="4" height="4" fill="#f97316"/>
                 <rect x="13" y="13" width="3" height="3" fill="white"/><rect x="18" y="13" width="3" height="3" fill="white"/>
                 <rect x="13" y="18" width="3" height="3" fill="white"/><rect x="18" y="18" width="3" height="3" fill="white"/>
               </svg>
@@ -435,7 +435,7 @@ export default function App() {
                       {domains.map(d => <option key={d} value={d}>{d}</option>)}
                     </select>
                     <span style={{ fontSize: 13, color: B.dim }}>/{slugPrefix}/</span>
-                    <input value={slug} onChange={e => setSlug(e.target.value.replace(/\s+/g, "-").replace(/\/+$/, "").toLowerCase())} placeholder="vcard/nombre" style={{ ...fieldInput, flex: 1 }} />
+                    <input value={slug} onChange={e => setSlug(e.target.value.replace(/\s+/g, "-").replace(/[^a-z0-9\-\/]/gi, "").replace(/\/+$/, "").toLowerCase())} placeholder="vcard/ricardo" style={{ ...fieldInput, flex: 1 }} />
                   </div>
                   {slug && <div style={{ background: "rgba(249,115,22,0.08)", border: "1px solid rgba(249,115,22,0.2)", borderRadius: 8, padding: "6px 10px" }}><span style={{ fontSize: 11, fontFamily: "monospace", color: B.orange }}>https://{slugDomain}/{slugPrefix}/{slug}</span></div>}
                 </div>
