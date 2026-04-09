@@ -185,6 +185,7 @@ app.put("/api/qrs/:id", requireAuth, async (req, res) => {
     if (existing) return res.status(409).json({ error: `El slug "${slug}" ya está en uso en ${slugDomain}` });
   }
 
+  const { tab } = req.body;
   const { error } = await supabase.from("qr_codes").update({
     dest_url: destUrl,
     label: label || "",
@@ -192,6 +193,7 @@ app.put("/api/qrs/:id", requireAuth, async (req, res) => {
     bg_color: bgColor || "#ffffff",
     slug: slug || null,
     slug_domain: slug ? (slugDomain || null) : null,
+    ...(tab ? { tab } : {}),
   }).eq("id", req.params.id);
 
   if (error) return res.status(500).json({ error: error.message });
