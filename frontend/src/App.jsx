@@ -13,14 +13,14 @@ const COLORS = ["#000000","#1a1a2e","#16213e","#e63946","#2a9d8f","#e9c46a","#6a
 
 // ── Brand tokens ─────────────────────────────────────
 const B = {
-  bg:       "#0d1117",
+  bg:       "#0A2B49",
   surface:  "#161b27",
-  card:     "#1e2535",
+  card:     "#08223A",
   border:   "#2a3348",
-  orange:   "#f97316",
+  orange:   "#ff8c22",
   orangeD:  "#ea580c",
-  text:     "#f1f5f9",
-  muted:    "#94a3b8",
+  text:     "#EBF2F7",
+  muted:    "#EBF2F7",
   dim:      "#64748b",
 };
 
