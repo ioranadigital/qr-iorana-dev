@@ -1,0 +1,7 @@
+{
+  "name": "interno-qr-iorana-dev",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "qr-iorana-dev project",
+  "private": true
+}
