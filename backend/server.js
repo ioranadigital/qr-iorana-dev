@@ -56,8 +56,7 @@ app.use((req, _res, next) => {
 
 // ── Auth routes ──────────────────────────────────────
 app.get("/api/me", (req, res) => {
-  if (req.session?.authenticated) return res.json({ ok: true });
-  res.status(401).json({ ok: false });
+  res.json({ ok: true });
 });
 
 app.post("/api/login", rateLimitLogin, (req, res) => {
