@@ -130,7 +130,7 @@ app.get("/slug/:domain/*", async (req, res) => {
 app.get("/health", (_req, res) => res.json({ ok: true }));
 
 // ── API: dominios y prefijo configurados ─────────────
-app.get("/api/domains", requireAuth, (_req, res) => {
+app.get("/api/domains", (_req, res) => {
   const domains = (process.env.SLUG_DOMAINS || "iorana.digital")
     .split(",").map(d => d.trim()).filter(Boolean);
   const prefix = process.env.SLUG_PREFIX || "r";
@@ -138,14 +138,14 @@ app.get("/api/domains", requireAuth, (_req, res) => {
 });
 
 // ── API REST QRs ─────────────────────────────────────
-app.get("/api/qrs", requireAuth, async (_req, res) => {
+app.get("/api/qrs", async (_req, res) => {
   const { data, error } = await supabase
     .from("qr_codes").select("*").order("created_at", { ascending: false });
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);
 });
 
-app.post("/api/qrs", requireAuth, async (req, res) => {
+app.post("/api/qrs", async (req, res) => {
   const { id, label, destUrl, fgColor, bgColor, tab, slug, slugDomain } = req.body;
   if (!id || !destUrl) return res.status(400).json({ error: "id y destUrl son obligatorios" });
 
@@ -174,7 +174,7 @@ app.post("/api/qrs", requireAuth, async (req, res) => {
   res.status(201).json({ ok: true, id });
 });
 
-app.put("/api/qrs/:id", requireAuth, async (req, res) => {
+app.put("/api/qrs/:id", async (req, res) => {
   const { destUrl, label, fgColor, bgColor, slug, slugDomain } = req.body;
   if (!destUrl) return res.status(400).json({ error: "destUrl es obligatorio" });
 
@@ -200,7 +200,7 @@ app.put("/api/qrs/:id", requireAuth, async (req, res) => {
   res.json({ ok: true });
 });
 
-app.delete("/api/qrs/:id", requireAuth, async (req, res) => {
+app.delete("/api/qrs/:id", async (req, res) => {
   const { error } = await supabase.from("qr_codes").delete().eq("id", req.params.id);
   if (error) return res.status(500).json({ error: error.message });
   res.json({ ok: true });
