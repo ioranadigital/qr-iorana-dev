@@ -6,4 +6,4 @@ RUN pnpm install --frozen-lockfile
 COPY . .
 EXPOSE 3010
 ENV NODE_ENV=production
-CMD ["pnpm", "start"]
+CMD ["node", "backend/server.js"]
