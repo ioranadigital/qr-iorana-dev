@@ -4,6 +4,6 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml* ./
 RUN pnpm install --frozen-lockfile
 COPY . .
-EXPOSE 3000
+EXPOSE 3010
 ENV NODE_ENV=production
 CMD ["pnpm", "start"]
