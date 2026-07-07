@@ -2,6 +2,7 @@ const express = require("express");
 const session = require("express-session");
 const cors = require("cors");
 const path = require("path");
+const crypto = require("crypto");
 const { createClient } = require("@supabase/supabase-js");
 
 const app = express();
@@ -12,6 +13,39 @@ const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_KEY
 );
+
+// ── Muro HTTP Basic Auth (global) ────────────────────
+// Se activa solo si BASIC_AUTH_USER y BASIC_AUTH_PASS están
+// definidas. Sin ellas (p.ej. desarrollo local), no restringe nada.
+function timingSafeEqualStr(a, b) {
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  if (bufA.length !== bufB.length) {
+    crypto.timingSafeEqual(bufA, bufA); // mantiene tiempo constante aprox.
+    return false;
+  }
+  return crypto.timingSafeEqual(bufA, bufB);
+}
+
+app.use((req, res, next) => {
+  const expectedUser = process.env.BASIC_AUTH_USER;
+  const expectedPass = process.env.BASIC_AUTH_PASS;
+  if (!expectedUser || !expectedPass) return next();
+
+  const header = req.headers.authorization || "";
+  const [scheme, encoded] = header.split(" ");
+  if (scheme === "Basic" && encoded) {
+    const decoded = Buffer.from(encoded, "base64").toString("utf8");
+    const sep = decoded.indexOf(":");
+    const reqUser = sep === -1 ? decoded : decoded.slice(0, sep);
+    const reqPass = sep === -1 ? "" : decoded.slice(sep + 1);
+    if (timingSafeEqualStr(reqUser, expectedUser) && timingSafeEqualStr(reqPass, expectedPass)) {
+      return next();
+    }
+  }
+  res.set("WWW-Authenticate", 'Basic realm="QR Iorana", charset="UTF-8"');
+  res.status(401).send("Autenticación requerida.");
+});
 
 // ── Middlewares ──────────────────────────────────────
 app.set("trust proxy", 1);
@@ -56,7 +90,8 @@ app.use((req, _res, next) => {
 
 // ── Auth routes ──────────────────────────────────────
 app.get("/api/me", (req, res) => {
-  res.json({ ok: true });
+  if (req.session?.authenticated) return res.json({ ok: true });
+  res.status(401).json({ ok: false });
 });
 
 app.post("/api/login", rateLimitLogin, (req, res) => {
@@ -129,7 +164,7 @@ app.get("/slug/:domain/*", async (req, res) => {
 app.get("/health", (_req, res) => res.json({ ok: true }));
 
 // ── API: dominios y prefijo configurados ─────────────
-app.get("/api/domains", (_req, res) => {
+app.get("/api/domains", requireAuth, (_req, res) => {
   const domains = (process.env.SLUG_DOMAINS || "iorana.digital")
     .split(",").map(d => d.trim()).filter(Boolean);
   const prefix = process.env.SLUG_PREFIX || "r";
@@ -137,14 +172,14 @@ app.get("/api/domains", (_req, res) => {
 });
 
 // ── API REST QRs ─────────────────────────────────────
-app.get("/api/qrs", async (_req, res) => {
+app.get("/api/qrs", requireAuth, async (_req, res) => {
   const { data, error } = await supabase
     .from("qr_codes").select("*").order("created_at", { ascending: false });
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);
 });
 
-app.post("/api/qrs", async (req, res) => {
+app.post("/api/qrs", requireAuth, async (req, res) => {
   const { id, label, destUrl, fgColor, bgColor, tab, slug, slugDomain } = req.body;
   if (!id || !destUrl) return res.status(400).json({ error: "id y destUrl son obligatorios" });
 
@@ -173,7 +208,7 @@ app.post("/api/qrs", async (req, res) => {
   res.status(201).json({ ok: true, id });
 });
 
-app.put("/api/qrs/:id", async (req, res) => {
+app.put("/api/qrs/:id", requireAuth, async (req, res) => {
   const { destUrl, label, fgColor, bgColor, slug, slugDomain } = req.body;
   if (!destUrl) return res.status(400).json({ error: "destUrl es obligatorio" });
 
@@ -199,7 +234,7 @@ app.put("/api/qrs/:id", async (req, res) => {
   res.json({ ok: true });
 });
 
-app.delete("/api/qrs/:id", async (req, res) => {
+app.delete("/api/qrs/:id", requireAuth, async (req, res) => {
   const { error } = await supabase.from("qr_codes").delete().eq("id", req.params.id);
   if (error) return res.status(500).json({ error: error.message });
   res.json({ ok: true });

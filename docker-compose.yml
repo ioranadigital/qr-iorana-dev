@@ -12,6 +12,13 @@ services:
       - PORT=${QR_IORANA_FRONTEND_PORT:-3010}
       - DB_PATH=/app/data/qr.db
       - ALLOWED_ORIGIN=https://qr.iorana.dev
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
+      - SESSION_SECRET=${SESSION_SECRET}
+      - ADMIN_USER=${ADMIN_USER}
+      - ADMIN_PASS=${ADMIN_PASS}
+      - BASIC_AUTH_USER=${BASIC_AUTH_USER}
+      - BASIC_AUTH_PASS=${BASIC_AUTH_PASS}
     volumes:
       - qr-db-data:/app/data
 
