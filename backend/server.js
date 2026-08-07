@@ -27,7 +27,19 @@ function timingSafeEqualStr(a, b) {
   return crypto.timingSafeEqual(bufA, bufB);
 }
 
+// Rutas públicas que un QR o un healthcheck externo debe poder
+// alcanzar sin pedir credenciales del panel.
+function isPublicRoute(req) {
+  return (
+    req.path === "/health" ||
+    req.path.startsWith("/go/") ||
+    req.path.startsWith("/slug/")
+  );
+}
+
 app.use((req, res, next) => {
+  if (isPublicRoute(req)) return next();
+
   const expectedUser = process.env.BASIC_AUTH_USER;
   const expectedPass = process.env.BASIC_AUTH_PASS;
   if (!expectedUser || !expectedPass) return next();
