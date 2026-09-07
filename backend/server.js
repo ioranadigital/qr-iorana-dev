@@ -21,10 +21,14 @@ function timingSafeEqualStr(a, b) {
   const bufA = Buffer.from(a);
   const bufB = Buffer.from(b);
   if (bufA.length !== bufB.length) {
-    crypto.timingSafeEqual(bufA, bufA); // mantiene tiempo constante aprox.
+    try { crypto.timingSafeEqual(bufA, bufA); } catch (e) {}
     return false;
   }
-  return crypto.timingSafeEqual(bufA, bufB);
+  try {
+    return crypto.timingSafeEqual(bufA, bufB);
+  } catch (e) {
+    return false;
+  }
 }
 
 // Rutas públicas que un QR o un healthcheck externo debe poder
