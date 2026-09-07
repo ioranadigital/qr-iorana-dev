@@ -227,12 +227,13 @@ app.delete("/api/qrs/:id", requireAuth, async (req, res) => {
 });
 
 // ── Frontend estático ────────────────────────────────
-app.use(express.static(path.join(__dirname, "public")));
+// index:false evita que "/" sirva index.html automáticamente
+// antes de pasar por el chequeo de sesión
+app.use(express.static(path.join(__dirname, "public"), { index: false }));
 
-// Ruta raíz: redirige al login si no está autenticado
-app.get("/", requireAuthUI);
-
-// Cualquier otra ruta: redirige al login si no está autenticado
-app.get("*", requireAuthUI);
+// Cualquier ruta de la SPA: exige sesión y sirve el index del panel
+app.get("*", requireAuthUI, (_req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
 
 app.listen(PORT, () => console.log(`Servidor en http://localhost:${PORT}`));
