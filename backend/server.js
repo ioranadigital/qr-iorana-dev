@@ -51,6 +51,9 @@ app.use((req, res, next) => {
     const sep = decoded.indexOf(":");
     const reqUser = sep === -1 ? decoded : decoded.slice(0, sep);
     const reqPass = sep === -1 ? "" : decoded.slice(sep + 1);
+    console.log(`[AUTH] Expected: "${expectedUser}" / "${expectedPass}"`);
+    console.log(`[AUTH] Received: "${reqUser}" / "${reqPass}"`);
+    console.log(`[AUTH] User match: ${reqUser === expectedUser}, Pass match: ${reqPass === expectedPass}`);
     if (timingSafeEqualStr(reqUser, expectedUser) && timingSafeEqualStr(reqPass, expectedPass)) {
       return next();
     }
