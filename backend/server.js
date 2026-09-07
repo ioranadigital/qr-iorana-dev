@@ -14,57 +14,17 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY
 );
 
-// ── Muro HTTP Basic Auth (global) ────────────────────
-// Se activa solo si BASIC_AUTH_USER y BASIC_AUTH_PASS están
-// definidas. Sin ellas (p.ej. desarrollo local), no restringe nada.
-function timingSafeEqualStr(a, b) {
-  const bufA = Buffer.from(a);
-  const bufB = Buffer.from(b);
-  if (bufA.length !== bufB.length) {
-    try { crypto.timingSafeEqual(bufA, bufA); } catch (e) {}
-    return false;
-  }
-  try {
-    return crypto.timingSafeEqual(bufA, bufB);
-  } catch (e) {
-    return false;
-  }
-}
-
-// Rutas públicas que un QR o un healthcheck externo debe poder
-// alcanzar sin pedir credenciales del panel.
+// ── Rutas públicas (sin autenticación) ────────────────
+// QR redirects y health checks pueden accederse sin login
 function isPublicRoute(req) {
   return (
     req.path === "/health" ||
+    req.path === "/" ||
+    req.path === "/login.html" ||
     req.path.startsWith("/go/") ||
     req.path.startsWith("/slug/")
   );
 }
-
-app.use((req, res, next) => {
-  if (isPublicRoute(req)) return next();
-
-  const expectedUser = process.env.BASIC_AUTH_USER;
-  const expectedPass = process.env.BASIC_AUTH_PASS;
-  if (!expectedUser || !expectedPass) return next();
-
-  const header = req.headers.authorization || "";
-  const [scheme, encoded] = header.split(" ");
-  if (scheme === "Basic" && encoded) {
-    const decoded = Buffer.from(encoded, "base64").toString("utf8");
-    const sep = decoded.indexOf(":");
-    const reqUser = sep === -1 ? decoded : decoded.slice(0, sep);
-    const reqPass = sep === -1 ? "" : decoded.slice(sep + 1);
-    console.log(`[AUTH] Expected: "${expectedUser}" / "${expectedPass}"`);
-    console.log(`[AUTH] Received: "${reqUser}" / "${reqPass}"`);
-    console.log(`[AUTH] User match: ${reqUser === expectedUser}, Pass match: ${reqPass === expectedPass}`);
-    if (timingSafeEqualStr(reqUser, expectedUser) && timingSafeEqualStr(reqPass, expectedPass)) {
-      return next();
-    }
-  }
-  res.set("WWW-Authenticate", 'Basic realm="QR Iorana", charset="UTF-8"');
-  res.status(401).send("Autenticación requerida.");
-});
 
 // ── Middlewares ──────────────────────────────────────
 app.set("trust proxy", 1);
@@ -96,9 +56,16 @@ function rateLimitLogin(req, res, next) {
 }
 
 // ── Auth middleware ──────────────────────────────────
+// Para API: rechaza si no está autenticado
 function requireAuth(req, res, next) {
   if (req.session?.authenticated) return next();
   res.status(401).json({ error: "No autenticado" });
+}
+
+// Para UI: redirige al login si no está autenticado
+function requireAuthUI(req, res, next) {
+  if (req.session?.authenticated) return next();
+  res.redirect("/login.html");
 }
 
 // ── Logging ──────────────────────────────────────────
@@ -261,6 +228,11 @@ app.delete("/api/qrs/:id", requireAuth, async (req, res) => {
 
 // ── Frontend estático ────────────────────────────────
 app.use(express.static(path.join(__dirname, "public")));
-app.get("*", (_req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
+
+// Ruta raíz: redirige al login si no está autenticado
+app.get("/", requireAuthUI);
+
+// Cualquier otra ruta: redirige al login si no está autenticado
+app.get("*", requireAuthUI);
 
 app.listen(PORT, () => console.log(`Servidor en http://localhost:${PORT}`));
