@@ -240,6 +240,41 @@ function LoginScreen({ onLogin }) {
   );
 }
 
+// ── Selector de dominio con opción de añadir uno nuevo ─
+const ADD_DOMAIN = "__add__";
+function DomainSelect({ value, onChange, domains, onAdd }) {
+  const [adding, setAdding] = useState(false);
+  const [text, setText] = useState("");
+  const [err, setErr] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  const submit = async () => {
+    if (!text.trim()) return;
+    setBusy(true); setErr(null);
+    try { const d = await onAdd(text.trim()); onChange(d); setAdding(false); setText(""); }
+    catch (e) { setErr(e.message); }
+    finally { setBusy(false); }
+  };
+
+  if (adding) return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      <div style={{ display: "flex", gap: 4 }}>
+        <input autoFocus value={text} onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === "Enter") submit(); if (e.key === "Escape") setAdding(false); }} placeholder="midominio.com" style={{ ...fieldInput, width: 150 }} />
+        <button onClick={submit} disabled={busy} style={{ padding: "0 10px", border: "none", borderRadius: 8, background: B.orange, color: "#fff", cursor: "pointer", fontWeight: 700 }}>{busy ? "…" : "Añadir"}</button>
+        <button onClick={() => { setAdding(false); setErr(null); }} style={{ padding: "0 10px", border: `1px solid ${B.border}`, borderRadius: 8, background: "transparent", color: B.muted, cursor: "pointer" }}>✕</button>
+      </div>
+      {err && <span style={{ fontSize: 11, color: "#ef4444" }}>{err}</span>}
+    </div>
+  );
+
+  return (
+    <select value={value} onChange={e => e.target.value === ADD_DOMAIN ? setAdding(true) : onChange(e.target.value)} style={{ ...fieldInput, width: "auto", flexShrink: 0, flex: "none" }}>
+      {domains.map(d => <option key={d} value={d}>{d}</option>)}
+      <option value={ADD_DOMAIN}>+ Añadir dominio…</option>
+    </select>
+  );
+}
+
 // ── Slug Field con dos inputs ─────────────────────────
 function SlugField({ slugDomain, setSlugDomain, domains, slugPrefix, value, onChange }) {
   const parts = value ? value.split("/") : ["", ""];
@@ -358,6 +393,12 @@ export default function App() {
 
   const normalize = r => ({ id: r.id, label: r.label, destUrl: r.dest_url, fgColor: r.fg_color || "#000000", bgColor: r.bg_color || "#ffffff", createdAt: r.created_at, tab: r.tab || tabs[0]?.id || "general", slug: r.slug || "", slugDomain: r.slug_domain || "" });
 
+  const handleAddDomain = async (domain) => {
+    const r = await apiFetch("/api/domains", { method: "POST", body: JSON.stringify({ domain }) });
+    setDomains(prev => prev.includes(r.domain) ? prev : [...prev, r.domain]);
+    return r.domain;
+  };
+
   const handleLogout = async () => { await apiFetch("/api/logout", { method: "POST" }); setAuthed(false); setQrs([]); };
   const resetForm = () => { setDestUrl(""); setLabel(""); setFgColor("#000000"); setBgColor("#ffffff"); setSlug(""); setShowForm(false); };
 
@@ -474,9 +515,7 @@ export default function App() {
                 <div>
                   <label style={fieldLabel}>URL amigable <span style={{ fontSize: 10, color: B.orange, background: "rgba(249,115,22,0.1)", borderRadius: 4, padding: "1px 6px", marginLeft: 4 }}>opcional</span></label>
                   <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6 }}>
-                    <select value={slugDomain} onChange={e => setSlugDomain(e.target.value)} style={{ ...fieldInput, width: "auto", flexShrink: 0 }}>
-                      {domains.map(d => <option key={d} value={d}>{d}</option>)}
-                    </select>
+                    <DomainSelect value={slugDomain} onChange={setSlugDomain} domains={domains} onAdd={handleAddDomain} />
                     <span style={{ fontSize: 13, color: B.dim }}>/{slugPrefix}/</span>
                     <input value={slug} onChange={e => setSlug(e.target.value.replace(/\s+/g, "-").replace(/[^a-z0-9\-\/]/gi, "").replace(/\/+$/, "").toLowerCase())} placeholder="vcard/ricardo" style={{ ...fieldInput, flex: 1 }} />
                   </div>
@@ -583,9 +622,7 @@ export default function App() {
                     <div>
                       <label style={fieldLabel}>URL amigable <span style={{ fontSize: 10, color: B.orange, background: "rgba(249,115,22,0.1)", borderRadius: 4, padding: "1px 6px", marginLeft: 4 }}>opcional</span></label>
                       <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6 }}>
-                        <select value={editSlugDomain} onChange={e => setEditSlugDomain(e.target.value)} style={{ ...fieldInput, width: "auto", flexShrink: 0 }}>
-                          {domains.map(d => <option key={d} value={d}>{d}</option>)}
-                        </select>
+                        <DomainSelect value={editSlugDomain} onChange={setEditSlugDomain} domains={domains} onAdd={handleAddDomain} />
                         <span style={{ fontSize: 13, color: B.dim }}>/{slugPrefix}/</span>
                         <input value={editSlug} onChange={e => setEditSlug(e.target.value.replace(/\s+/g, "-").replace(/\/+$/, "").toLowerCase())} placeholder="vcard/nombre" style={{ ...fieldInput, flex: 1 }} />
                       </div>

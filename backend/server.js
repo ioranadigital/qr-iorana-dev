@@ -150,11 +150,51 @@ app.get("/slug/:domain/*", async (req, res) => {
 app.get("/health", (_req, res) => res.json({ ok: true }));
 
 // ── API: dominios y prefijo configurados ─────────────
-app.get("/api/domains", requireAuth, (_req, res) => {
-  const domains = (process.env.SLUG_DOMAINS || "iorana.digital")
-    .split(",").map(d => d.trim()).filter(Boolean);
+// Dominios base (SLUG_DOMAINS, no borrables) + dominios añadidos desde la UI
+// (tabla slug_domains en Supabase; ver docs/database/slug_domains.sql).
+const envDomains = () => (process.env.SLUG_DOMAINS || "iorana.digital")
+  .split(",").map(d => d.trim().toLowerCase()).filter(Boolean);
+
+const DOMAIN_RE = /^(?=.{4,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/;
+
+async function dbDomains() {
+  const { data, error } = await supabase.from("slug_domains").select("domain").order("created_at");
+  if (error) { console.error("slug_domains:", error.message); return { rows: [], error }; }
+  return { rows: data.map(r => r.domain), error: null };
+}
+
+app.get("/api/domains", requireAuth, async (_req, res) => {
+  const base = envDomains();
+  const { rows } = await dbDomains();
+  const domains = [...new Set([...base, ...rows])];
   const prefix = process.env.SLUG_PREFIX || "r";
-  res.json({ domains, prefix });
+  res.json({ domains, custom: rows.filter(d => !base.includes(d)), prefix });
+});
+
+app.post("/api/domains", requireAuth, async (req, res) => {
+  const domain = String(req.body.domain || "").trim().toLowerCase()
+    .replace(/^https?:\/\//, "").replace(/\/.*$/, "");
+  if (!DOMAIN_RE.test(domain)) return res.status(400).json({ error: "Dominio no válido (ej: midominio.com)" });
+  if (envDomains().includes(domain)) return res.status(409).json({ error: "El dominio ya existe" });
+
+  const { error } = await supabase.from("slug_domains").insert({ domain });
+  if (error) {
+    if (error.code === "23505") return res.status(409).json({ error: "El dominio ya existe" });
+    if (error.code === "42P01" || error.code === "PGRST205")
+      return res.status(500).json({ error: "Falta la tabla slug_domains en Supabase (ver docs/database/slug_domains.sql)" });
+    return res.status(500).json({ error: error.message });
+  }
+  res.status(201).json({ ok: true, domain });
+});
+
+app.delete("/api/domains/:domain", requireAuth, async (req, res) => {
+  const domain = req.params.domain.toLowerCase();
+  if (envDomains().includes(domain)) return res.status(400).json({ error: "Dominio base: se configura en SLUG_DOMAINS" });
+  const { count } = await supabase.from("qr_codes").select("id", { count: "exact", head: true }).eq("slug_domain", domain);
+  if (count > 0) return res.status(409).json({ error: `${count} QR usan este dominio; cámbialos antes de eliminarlo` });
+  const { error } = await supabase.from("slug_domains").delete().eq("domain", domain);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ ok: true });
 });
 
 // ── API REST QRs ─────────────────────────────────────
